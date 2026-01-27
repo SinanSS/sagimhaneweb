@@ -121,7 +121,7 @@ export function Header() {
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-emerald-400" />
               <div>
-                <div className="text-xs text-gray-300">Tamamlanan</div>
+                <div className="text-xs text-gray-300">Sağım Yapılan</div>
                 <div className="text-lg font-bold text-white">
                   {stats.completedCount}
                 </div>

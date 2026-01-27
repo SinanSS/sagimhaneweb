@@ -7,63 +7,93 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  MILKING_SETTINGS,
-  MOCK_ANIMALS,
-  PARLOR_CONFIG,
-} from "../config/parlor.config";
-import { AnimalData, SessionStats, StallData } from "../types";
+import { PARLOR_CONFIG } from "../config/parlor.config";
+import { SessionStats, StallData } from "../types";
 
 interface StallContextType {
   stalls: StallData[];
   stats: SessionStats;
-  startNewGroup: () => void;
-  clearStall: (stallId: number) => void;
-  updateAnimalPhoto: (stallId: number, photoUrl: string) => void;
   totalStalls: number;
-  addStalls: (count: number) => void;
-  removeStalls: (count: number) => void;
 }
 
 const StallContext = createContext<StallContextType | undefined>(undefined);
 
-// Yeni hayvan grubu oluştur (20 hayvan)
-const generateAnimalGroup = (groupNumber: number): AnimalData[] => {
-  return Array.from({ length: PARLOR_CONFIG.totalStalls }, (_, i) => {
-    const mockAnimal =
-      MOCK_ANIMALS[Math.floor(Math.random() * MOCK_ANIMALS.length)];
-    return {
-      tag: `TR${(groupNumber * 1000 + i + 1).toString().padStart(5, "0")}`,
-      name: mockAnimal.name,
-      breed: mockAnimal.breed,
-      photoUrl: undefined, // Kullanıcı yükleyebilecek
-    };
-  });
-};
+// SSE Backend URL
+const SSE_URL = "http://localhost:3005/live";
 
-// İlk bölmeleri oluştur (20 bölme: üstte 10, altta 10)
-const generateInitialStalls = (): StallData[] => {
-  return Array.from({ length: PARLOR_CONFIG.totalStalls }, (_, i) => {
-    const id = i + 1;
-    const side: "left" | "right" = i < 10 ? "left" : "right";
-    const position = (i % 10) + 1;
+// SSE Event Tipleri
+interface SSEStartEvent {
+  type: "START";
+  kayitId: number;
+  hayvanId: number;
+  kupeNo: string;
+  ozelTakipNo?: string;
+  baslangic: string;
+}
 
-    return {
-      id,
-      status: "empty",
+interface SSEUpdateEvent {
+  type: "UPDATE";
+  kayitId: number;
+  hayvanId: number;
+  kupeNo: string;
+  ozelTakipNo?: string;
+  pulse: number;
+  litre: number;
+  sure: number;
+}
+
+interface SSEStopEvent {
+  type: "STOP";
+  kayitId: number;
+  hayvanId: number;
+  kupeNo: string;
+  toplamLitre: number;
+  toplamSure: number;
+}
+
+type SSEEvent = SSEStartEvent | SSEUpdateEvent | SSEStopEvent;
+
+// Hayvan ID'sine göre stall ID hesapla
+function getStallIdFromAnimalId(hayvanId: number): number {
+  const stallId = (hayvanId % PARLOR_CONFIG.totalStalls) || PARLOR_CONFIG.totalStalls;
+  return stallId;
+}
+
+// Stall ID'sine göre side ve position hesapla
+function getStallSideAndPosition(stallId: number): { side: "left" | "right"; position: number } {
+  const { stallsPerSide } = PARLOR_CONFIG;
+  
+  if (stallId <= stallsPerSide) {
+    return { side: "left", position: stallId };
+  } else {
+    return { side: "right", position: stallId - stallsPerSide };
+  }
+}
+
+// Başlangıç stall'ları oluştur (hepsi waiting durumunda)
+function initializeStalls(): StallData[] {
+  const stalls: StallData[] = [];
+  
+  for (let i = 1; i <= PARLOR_CONFIG.totalStalls; i++) {
+    const { side, position } = getStallSideAndPosition(i);
+    
+    stalls.push({
+      id: i,
+      status: "waiting",
       milkAmount: 0,
       duration: 0,
       side,
       position,
       lastUpdate: Date.now(),
-    };
-  });
-};
+    });
+  }
+  
+  return stalls;
+}
 
 export function StallProvider({ children }: { children: ReactNode }) {
-  const [totalStalls, setTotalStalls] = useState(PARLOR_CONFIG.totalStalls);
-  const [stalls, setStalls] = useState<StallData[]>(generateInitialStalls());
-  const [currentGroup, setCurrentGroup] = useState(1);
+  const [totalStalls] = useState(PARLOR_CONFIG.totalStalls);
+  const [stalls, setStalls] = useState<StallData[]>(initializeStalls());
   const [stats, setStats] = useState<SessionStats>({
     totalMilk: 0,
     activeStalls: 0,
@@ -72,54 +102,42 @@ export function StallProvider({ children }: { children: ReactNode }) {
     currentGroup: 1,
   });
 
-  // Yeni grup başlat
-  const startNewGroup = () => {
-    const newGroup = currentGroup + 1;
-    const animals = generateAnimalGroup(newGroup);
-    const now = Date.now();
-
-    setStalls((prevStalls) =>
-      prevStalls.map((stall, index) => {
-        // Her inek için farklı özellikler - SİMÜLASYON İÇİN HIZLANDIRILMIŞ
-        const targetMilk = 10 + Math.random() * 15; // 10-25 litre arası
-        const flowRate =
-          MILKING_SETTINGS.milkFlowRate.min +
-          Math.random() *
-            (MILKING_SETTINGS.milkFlowRate.max -
-              MILKING_SETTINGS.milkFlowRate.min);
-        const estimatedDuration = targetMilk / flowRate; // Tahmini süre
-        const startDelay = Math.random() * 10000; // 0-10 saniye arası başlama gecikmesi
-
-        return {
-          ...stall,
-          status: "empty" as const, // İlk başta boş, sonra milking'e geçecek
-          animal: animals[index],
-          milkAmount: 0,
-          duration: 0,
-          milkingStartTime: now + startDelay,
-          lastUpdate: now,
-          targetMilkAmount: targetMilk,
-          milkFlowRate: flowRate,
-          estimatedDuration: estimatedDuration,
-        };
-      })
-    );
-
-    setCurrentGroup(newGroup);
-  };
-
-  // Tek bir bölmeyi temizle
-  const clearStall = (stallId: number) => {
+  // SSE Event Handlers
+  const handleStartEvent = (event: SSEStartEvent) => {
+    const stallId = getStallIdFromAnimalId(event.hayvanId);
+    
     setStalls((prevStalls) =>
       prevStalls.map((stall) =>
         stall.id === stallId
           ? {
               ...stall,
-              status: "empty",
-              animal: undefined,
+              status: "milking",
               milkAmount: 0,
               duration: 0,
-              milkingStartTime: undefined,
+              animal: {
+                tag: event.kupeNo,
+                name: event.ozelTakipNo || "-",
+              },
+              milkingStartTime: Date.now(),
+              lastUpdate: Date.now(),
+            }
+          : stall
+      )
+    );
+
+    console.log(`🟢 Sağım başladı | Hayvan: ${event.hayvanId} | Stall: ${stallId} | Küpe: ${event.kupeNo}`);
+  };
+
+  const handleUpdateEvent = (event: SSEUpdateEvent) => {
+    const stallId = getStallIdFromAnimalId(event.hayvanId);
+    
+    setStalls((prevStalls) =>
+      prevStalls.map((stall) =>
+        stall.id === stallId
+          ? {
+              ...stall,
+              milkAmount: event.litre,
+              duration: event.sure,
               lastUpdate: Date.now(),
             }
           : stall
@@ -127,201 +145,105 @@ export function StallProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Hayvan fotoğrafını güncelle
-  const updateAnimalPhoto = (stallId: number, photoUrl: string) => {
+  const handleStopEvent = (event: SSEStopEvent) => {
+    const stallId = getStallIdFromAnimalId(event.hayvanId);
+    
+    // Sağım bitti ama verileri koru - yeni hayvan gelene kadar
     setStalls((prevStalls) =>
       prevStalls.map((stall) =>
-        stall.id === stallId && stall.animal
+        stall.id === stallId
           ? {
               ...stall,
-              animal: {
-                ...stall.animal,
-                photoUrl,
-              },
+              status: "waiting",
+              // milkAmount, duration, animal bilgileri KORUNUYOR
+              lastUpdate: Date.now(),
             }
           : stall
       )
     );
+
+    // Toplam sağım sayısını artır
+    setStats((prev) => ({
+      ...prev,
+      completedCount: prev.completedCount + 1,
+    }));
+
+    console.log(`🔴 Sağım bitti | Hayvan: ${event.hayvanId} | Stall: ${stallId} | Toplam: ${event.toplamLitre}L`);
   };
 
-  // Bölme ekle (tekli)
-  const addStalls = (count: number = 1) => {
-    const newTotal = totalStalls + count;
-    setTotalStalls(newTotal);
-
-    setStalls((prevStalls) => {
-      const newStalls = Array.from({ length: count }, (_, i) => {
-        const newId = prevStalls.length + i + 1;
-        const topRowCount = Math.ceil(newTotal / 2);
-        const side: "left" | "right" = newId <= topRowCount ? "left" : "right";
-        const position = side === "left" ? newId : newId - topRowCount;
-
-        return {
-          id: newId,
-          status: "empty" as const,
-          milkAmount: 0,
-          duration: 0,
-          side,
-          position,
-          lastUpdate: Date.now(),
-        };
-      });
-
-      return [...prevStalls, ...newStalls];
-    });
-  };
-
-  // Bölme çıkar (tekli)
-  const removeStalls = (count: number = 1) => {
-    if (totalStalls - count < 1) return; // En az 1 bölme kalsın
-
-    const newTotal = totalStalls - count;
-    setTotalStalls(newTotal);
-
-    setStalls((prevStalls) => {
-      // Son bölmeleri çıkar
-      return prevStalls.slice(0, newTotal);
-    });
-  };
-
-  // İlk grup yükle
+  // SSE Bağlantısı
   useEffect(() => {
-    const timer = setTimeout(() => {
-      startNewGroup();
-    }, 1000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    console.log("🔌 SSE bağlantısı kuruluyor...", SSE_URL);
+    
+    const eventSource = new EventSource(SSE_URL);
 
-  // Gerçek zamanlı veri simülasyonu
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
+    eventSource.onopen = () => {
+      console.log("✅ SSE bağlantısı başarılı");
+    };
 
-      setStalls((prevStalls) =>
-        prevStalls.map((stall) => {
-          // Boş ama hayvanı var ve zamanı gelmiş mi? (sağım başlamalı)
-          if (
-            stall.status === "empty" &&
-            stall.animal &&
-            stall.milkingStartTime &&
-            now >= stall.milkingStartTime
-          ) {
-            return {
-              ...stall,
-              status: "milking",
-              lastUpdate: now,
-            };
-          }
-
-          // Sağım yapılanlar
-          if (stall.status === "milking") {
-            const elapsed = (now - stall.milkingStartTime!) / 1000;
-            const newDuration = Math.floor(elapsed);
-
-            // Her ineğin kendi akış hızı ile süt artışı
-            const flowRate = stall.milkFlowRate || 0.4;
-            const newAmount = stall.milkAmount + flowRate; // 1 saniye aralıklı
-
-            // Her ineğin kendi hedef miktarına ulaştı mı?
-            const targetMilk = stall.targetMilkAmount || 25;
-            if (
-              newAmount >= targetMilk ||
-              newDuration >= MILKING_SETTINGS.maxDuration
-            ) {
-              return {
-                ...stall,
-                status: "completed",
-                milkAmount: Math.min(newAmount, targetMilk),
-                duration: newDuration,
-                lastUpdate: now,
-              };
-            }
-
-            return {
-              ...stall,
-              milkAmount: newAmount,
-              duration: newDuration,
-              lastUpdate: now,
-            };
-          }
-
-          // Tamamlanmış bölmeler - otomatik grup değiştirme
-          if (stall.status === "completed") {
-            if (MILKING_SETTINGS.autoGroupChange) {
-              const allCompleted = prevStalls.every(
-                (s) => s.status === "completed"
-              );
-
-              // Tüm bölmeler tamamlandıysa, belirli bir süre sonra yeni grup başlat
-              if (
-                allCompleted &&
-                now - stall.lastUpdate! >=
-                  MILKING_SETTINGS.groupChangeDelay * 1000
-              ) {
-                return stall; // Yeni grup startNewGroup ile başlatılacak
-              }
-            }
-          }
-
-          return stall;
-        })
-      );
-
-      // Tüm bölmeler tamamlandı mı kontrol et
-      setStalls((prevStalls) => {
-        const allCompleted = prevStalls.every((s) => s.status === "completed");
-        if (allCompleted && MILKING_SETTINGS.autoGroupChange) {
-          const firstStall = prevStalls[0];
-          if (
-            firstStall.lastUpdate &&
-            now - firstStall.lastUpdate >=
-              MILKING_SETTINGS.groupChangeDelay * 1000
-          ) {
-            // Yeni grup başlat
-            setTimeout(() => startNewGroup(), 500);
-          }
+    eventSource.onmessage = (event) => {
+      try {
+        const data: SSEEvent = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case "START":
+            handleStartEvent(data);
+            break;
+          case "UPDATE":
+            handleUpdateEvent(data);
+            break;
+          case "STOP":
+            handleStopEvent(data);
+            break;
+          default:
+            console.warn("⚠️ Bilinmeyen event tipi:", data);
         }
-        return prevStalls;
-      });
-    }, MILKING_SETTINGS.updateInterval);
+      } catch (error) {
+        console.error("❌ SSE event parse hatası:", error);
+      }
+    };
 
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    eventSource.onerror = (error) => {
+      console.error("❌ SSE bağlantı hatası:", error);
+    };
+
+    // Cleanup
+    return () => {
+      console.log("🔌 SSE bağlantısı kapatılıyor...");
+      eventSource.close();
+    };
   }, []);
 
-  // İstatistikleri güncelle
+  // Stats'ı gerçek zamanlı hesapla
   useEffect(() => {
-    const totalMilk = stalls.reduce((sum, s) => sum + s.milkAmount, 0);
     const activeStalls = stalls.filter((s) => s.status === "milking").length;
-    const completedStalls = stalls.filter((s) => s.status === "completed");
-    const completedCount = completedStalls.length;
+    const totalMilk = stalls.reduce((sum, s) => sum + s.milkAmount, 0);
+    
+    const activeDurations = stalls
+      .filter((s) => s.status === "milking")
+      .map((s) => s.duration);
+    
     const averageDuration =
-      completedCount > 0
-        ? completedStalls.reduce((sum, s) => sum + s.duration, 0) /
-          completedCount
+      activeDurations.length > 0
+        ? Math.round(
+            activeDurations.reduce((sum, d) => sum + d, 0) / activeDurations.length
+          )
         : 0;
 
-    setStats({
+    setStats((prev) => ({
+      ...prev,
       totalMilk,
       activeStalls,
-      completedCount,
       averageDuration,
-      currentGroup,
-    });
-  }, [stalls, currentGroup]);
+    }));
+  }, [stalls]);
 
   return (
     <StallContext.Provider
       value={{
         stalls,
         stats,
-        startNewGroup,
-        clearStall,
-        updateAnimalPhoto,
         totalStalls,
-        addStalls,
-        removeStalls,
       }}
     >
       {children}

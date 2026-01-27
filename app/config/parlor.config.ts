@@ -7,8 +7,8 @@ import { MilkingParlor } from "../types";
 export const PARLOR_CONFIG: MilkingParlor = {
   id: "sagimhane-001",
   name: "Ana Sağımhane",
-  totalStalls: 20,
-  stallsPerSide: 10,
+  totalStalls: 10,
+  stallsPerSide: 5,
   sides: 2,
 };
 

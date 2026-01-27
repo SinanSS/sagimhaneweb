@@ -1,10 +1,13 @@
-export type StallStatus = 'empty' | 'milking' | 'completed' | 'error';
+export type StallStatus = 'milking' | 'waiting' | 'ignored';
 
 export interface AnimalData {
   tag: string; // RFID Küpe No
   name: string; // İnek Adı
   photoUrl?: string; // Hayvan Fotoğrafı
   breed?: string; // Irk
+  lastMilkAmount?: number; // Son Sağımda Verdiği Süt (Litre)
+  weeklyAverage?: number; // Haftalık Ortalama Süt (Litre)
+  lactationNumber?: number; // Laktasyon Sayısı
 }
 
 export interface StallData {
