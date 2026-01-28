@@ -21,19 +21,19 @@ export const MILKING_SETTINGS = {
     min: 0.3,
     max: 0.6,
   },
-  
+
   // Maksimum süt miktarı (litre)
   maxMilkAmount: 30,
-  
+
   // Maksimum sağım süresi (saniye)
   maxDuration: 120,
-  
+
   // Güncelleme aralığı (milisaniye)
   updateInterval: 1000, // 1 saniye
-  
+
   // Otomatik grup değiştirme
   autoGroupChange: true,
-  
+
   // Grup değiştirme gecikmesi (saniye)
   groupChangeDelay: 3,
 };
@@ -49,7 +49,7 @@ export const VISUAL_SETTINGS = {
     animalEntry: 800,
     animalExit: 600,
   },
-  
+
   // Varsayılan hayvan fotoğrafları (rastgele seçilecek)
   defaultAnimalPhotos: [
     "🐄", // Emoji olarak başlayalım, sonra gerçek fotoğraflar eklenebilir
