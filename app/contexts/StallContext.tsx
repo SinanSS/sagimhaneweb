@@ -156,7 +156,7 @@ export function StallProvider({ children }: { children: ReactNode }) {
         const activeMeasurement = measurementsByStallId.get(stall.id);
 
         if (activeMeasurement) {
-          // --- AKTİF SAĞIM ---
+          // --- AKTİF SAĞIM (VARSA) ---
           const isNewStart = stall.status !== "milking";
           if (isNewStart) {
             console.log(
@@ -178,18 +178,26 @@ export function StallProvider({ children }: { children: ReactNode }) {
             lastUpdate: Date.now(),
           };
         } else {
-          // --- BOŞ STALL ---
-          // Eğer önceden doluyduysa şimdi boşalmalı (waiting)
+          // --- AKTİF SAĞIM YOKSA ---
+          
+          // 1. Eğer "milking" ise ve yeni veri gelmediyse -> Sağım BİTTİ -> COMPLETED'a geç
           if (stall.status === "milking") {
             return {
               ...stall,
-              status: "waiting",
-              // Son verileri ekranda göstermek için koruyoruz
+              status: "completed",
+              // Süt miktarı, duration ve hayvan bilgilerini KORUYORUZ ki ekranda "Tamamlandı" olarak görünsün
               lastUpdate: Date.now(),
             };
           }
-          // Zaten boşsa değişiklik yok
-          return stall;
+
+          // 2. Eğer zaten "completed" ise ve yeni veri yoksa -> COMPLETED olarak kalmaya devam et
+          // Böylece kullanıcı yeni bir hayvan takana kadar (yeni activeMeasurement gelene kadar) son sağımı görür.
+          if (stall.status === "completed") {
+             return stall;
+          }
+
+          // 3. Diğer durumlarda (waiting veya ignored) -> Waiting kal
+          return { ...stall, status: "waiting" };
         }
       })
     );

@@ -33,13 +33,13 @@ const getStatusConfig = (status: StallData["status"]) => {
         glow: "shadow-sm shadow-red-200",
         label: "İhmal Edilecek",
       };
-    default:
+    case "completed":
       return {
-        bg: "bg-gradient-to-br from-amber-50 to-amber-100",
-        border: "border-amber-500 shadow-amber-200",
-        badge: "bg-amber-600 text-white",
-        glow: "shadow-sm shadow-amber-200",
-        label: "Beklemede",
+        bg: "bg-gradient-to-br from-blue-50 to-blue-100",
+        border: "border-blue-500 shadow-blue-200",
+        badge: "bg-blue-600 text-white",
+        glow: "shadow-sm shadow-blue-200",
+        label: "Tamamlandı",
       };
   }
 };

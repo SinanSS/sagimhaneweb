@@ -1,4 +1,4 @@
-export type StallStatus = 'milking' | 'waiting' | 'ignored';
+export type StallStatus = 'milking' | 'waiting' | 'ignored' | 'completed';
 
 export interface AnimalData {
   tag: string; // RFID Küpe No

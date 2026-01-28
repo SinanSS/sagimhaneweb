@@ -4,7 +4,7 @@ import path from 'path';
 
 const ML_PER_PULSE = 100;
 
-const DB_PATH = '/home/tarimcan/sutolcer/db_sqlite/sut_olcer_isletme.db';
+const DB_PATH = '/sutolcer/sutolcer_listener/db/sut_olcer_isletme.db';
 
 interface ActiveMeasurement {
     kayit_id: number;
