@@ -94,6 +94,7 @@ function initializeStalls(): StallData[] {
 export function StallProvider({ children }: { children: ReactNode }) {
   const [totalStalls] = useState(PARLOR_CONFIG.totalStalls);
   const [stalls, setStalls] = useState<StallData[]>(initializeStalls());
+  const [completedDurations, setCompletedDurations] = useState<number[]>([]);
   const [stats, setStats] = useState<SessionStats>({
     totalMilk: 0,
     activeStalls: 0,
@@ -147,6 +148,9 @@ export function StallProvider({ children }: { children: ReactNode }) {
 
   const handleStopEvent = (event: SSEStopEvent) => {
     const stallId = getStallIdFromAnimalId(event.hayvanId);
+    
+    // Tamamlanan sağımın süresini kaydet
+    setCompletedDurations((prev) => [...prev, event.toplamSure]);
     
     // Sağım bitti ama verileri koru - yeni hayvan gelene kadar
     setStalls((prevStalls) =>
@@ -219,14 +223,11 @@ export function StallProvider({ children }: { children: ReactNode }) {
     const activeStalls = stalls.filter((s) => s.status === "milking").length;
     const totalMilk = stalls.reduce((sum, s) => sum + s.milkAmount, 0);
     
-    const activeDurations = stalls
-      .filter((s) => s.status === "milking")
-      .map((s) => s.duration);
-    
+    // Ortalama süreyi tamamlanmış sağımlardan hesapla
     const averageDuration =
-      activeDurations.length > 0
+      completedDurations.length > 0
         ? Math.round(
-            activeDurations.reduce((sum, d) => sum + d, 0) / activeDurations.length
+            completedDurations.reduce((sum, d) => sum + d, 0) / completedDurations.length
           )
         : 0;
 
@@ -236,7 +237,7 @@ export function StallProvider({ children }: { children: ReactNode }) {
       activeStalls,
       averageDuration,
     }));
-  }, [stalls]);
+  }, [stalls, completedDurations]);
 
   return (
     <StallContext.Provider

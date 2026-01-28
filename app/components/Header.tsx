@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useStalls } from "../contexts/StallContext";
 
 export function Header() {
-  const { stats, totalStalls, addStalls, removeStalls } = useStalls();
+  const { stats, totalStalls } = useStalls();
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
 
@@ -61,35 +61,6 @@ export function Header() {
 
         {/* Orta: İstatistikler ve Kontroller */}
         <div className="flex items-center gap-3">
-          {/* Hayvan Sayısı Kontrolü */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20">
-            <div className="flex items-center gap-2">
-              <div>
-                <div className="text-xs text-gray-300">Bölme Sayısı</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={() => removeStalls(1)}
-                    disabled={totalStalls <= 1}
-                    className="bg-red-500 hover:bg-red-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white rounded p-1 transition-colors"
-                    title="1 Bölme Azalt"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </button>
-                  <span className="text-lg font-bold text-white min-w-[40px] text-center">
-                    {totalStalls}
-                  </span>
-                  <button
-                    onClick={() => addStalls(1)}
-                    disabled={totalStalls >= 40}
-                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white rounded p-1 transition-colors"
-                    title="1 Bölme Ekle"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
           {/* Toplam Süt */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/20">
             <div className="flex items-center gap-2">

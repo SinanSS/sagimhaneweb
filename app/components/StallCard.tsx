@@ -66,24 +66,31 @@ export function StallCard({ stall }: StallCardProps) {
       `}
     >
       {/* Üst Kısım: Bölme No ve Durum */}
-      <div className="flex flex-col gap-2 mb-2">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-900 font-bold text-lg">
-            #{stall.id}
-          </span>
+<div className={`flex flex-col gap-2 mb-2 border-b ${config.border}/20 pb-2`}>
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <span className="text-gray-900 font-bold text-lg">
+      #{stall.id}
+    </span>
 
-          {/* Durum Badge */}
-          <div
-            className={`
-              px-2 py-1 rounded-lg text-xs font-bold text-center
-              ${config.badge}
-            `}
-          >
-            {config.label}
-          </div>
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold bg-white/70">
+      <Timer className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+      <span className="font-mono font-bold text-sm text-gray-900 whitespace-nowrap">
+        {stall.duration > 0 ? formatDuration(stall.duration) : "-"}
+      </span>
+    </div>
 
-        </div>
-      </div>
+    {/* Durum Badge */}
+    <div
+      className={`
+        px-2 py-1 rounded-lg text-xs font-bold text-center
+        ${config.badge}
+      `}
+    >
+      {config.label}
+    </div>
+
+  </div>
+</div>
 
       {/* Süt Miktarı */}
       <div className="text-center mb-2">
@@ -97,33 +104,24 @@ export function StallCard({ stall }: StallCardProps) {
 
       {/* Hayvan Bilgileri - Basit ve Kompakt */}
       <div className="mt-auto space-y-2">
-        {/* Küpe, İsim, Süre - Tek Satır */}
-        <div className="flex items-center gap-2">
+        {/* Küpe, İsim, Süre - Responsive */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Küpe */}
-          <div className="flex items-center gap-1.5 bg-white/70 rounded px-2 py-1 flex-1">
+          <div className="flex items-center gap-1.5 bg-white/70 rounded px-2 py-1">
             <Tag className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-            <span className="font-bold text-sm text-gray-900 truncate">
+            <span className="font-bold text-sm text-gray-900 whitespace-nowrap">
               {stall.animal?.tag || "-"}
             </span>
           </div>
 
-          {/* İsim */}
-          <div className="flex items-center gap-1.5 bg-white/70 rounded px-2 py-1 flex-1">
+          {/* İsim - Minimum genişlik garantili */}
+          <div className="flex items-center gap-1.5 bg-white/70 rounded px-2 py-1 flex-1 min-w-[80px]">
             <span className="text-sm shrink-0">🐮</span>
             <span className="font-bold text-sm text-gray-900 truncate">
               {stall.animal?.name || "-"}
             </span>
           </div>
-
-          {/* Süre */}
-          <div className="flex items-center gap-1.5 bg-white/70 rounded px-2 py-1">
-            <Timer className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-            <span className="font-mono font-bold text-sm text-gray-900">
-              {stall.duration > 0 ? formatDuration(stall.duration) : "-"}
-            </span>
-          </div>
-        </div>
-
+        </div>  
 
         {/* Otomatik Kayan Bilgi Bandı (Marquee) */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg h-8">
