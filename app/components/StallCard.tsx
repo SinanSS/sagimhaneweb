@@ -66,40 +66,48 @@ export function StallCard({ stall }: StallCardProps) {
       `}
     >
       {/* Üst Kısım: Bölme No ve Durum */}
-<div className={`flex flex-col gap-2 mb-2 border-b ${config.border}/20 pb-2`}>
-  <div className="flex flex-wrap items-center justify-between gap-2">
-    <span className="text-gray-900 font-bold text-lg">
-      #{stall.id}
-    </span>
+      <div className={`flex flex-col gap-2 mb-2 border-b ${config.border}/20 pb-2`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-gray-900 font-bold text-lg">
+            #{stall.id}
+          </span>
 
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold bg-white/70">
-      <Timer className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-      <span className="font-mono font-bold text-sm text-gray-900 whitespace-nowrap">
-        {stall.duration > 0 ? formatDuration(stall.duration) : "-"}
-      </span>
-    </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold bg-white/70">
+            <Timer className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+            <span className="font-mono font-bold text-sm text-gray-900 whitespace-nowrap">
+              {stall.duration > 0 ? formatDuration(stall.duration) : "-"}
+            </span>
+          </div>
 
-    {/* Durum Badge */}
-    <div
-      className={`
-        px-2 py-1 rounded-lg text-xs font-bold text-center
-        ${config.badge}
-      `}
-    >
-      {config.label}
-    </div>
-
-  </div>
-</div>
+          {/* Durum Badge */}
+          <div
+            className={`
+              px-2 py-1 rounded-lg text-xs font-bold text-center
+              ${config.badge}
+            `}
+          >
+            {config.label}
+          </div>
+        </div>
+      </div>
 
       {/* Süt Miktarı */}
-      <div className="text-center mb-2">
+      <div className="text-center">
         <div className="flex items-end justify-center gap-1">
-          <span className="font-bold text-gray-900 leading-none text-2xl">
+          <span className="font-bold text-gray-900 leading-none text-3xl">
             {stall.milkAmount.toFixed(1)}
           </span>
-          <span className="text-sm font-medium text-gray-600 pb-0.5">L</span>
+          <span className="text-md font-medium text-gray-600 pb-0.5">L</span>
         </div>
+      </div>
+
+      {/* Sağmal Görseli */}
+      <div className="flex justify-center items-center my-2">
+        <img 
+          src="sagmal.png" 
+          alt="Sağmal" 
+          className="w-full h-auto max-h-38 object-contain"
+        />
       </div>
 
       {/* Hayvan Bilgileri - Basit ve Kompakt */}
